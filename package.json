@@ -1,0 +1,44 @@
+{
+  "name": "babel-plugin-prebuild",
+  "version": "0.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "module": "lib/index.mjs",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "test": "jest",
+    "tsc": "tsc -p . --noEmit",
+    "prepublishOnly": "rimraf lib && npm run build"
+  },
+  "devDependencies": {
+    "@babel/core": "7.17.10",
+    "@babel/preset-env": "7.17.10",
+    "@babel/preset-typescript": "7.16.7",
+    "@rollup/plugin-typescript": "8.3.2",
+    "@types/jest": "^27.4.0",
+    "babel-jest": "27.4.6",
+    "jest": "27.4.7",
+    "rimraf": "3.0.2",
+    "rollup": "2.73.0",
+    "tslib": "2.4.0",
+    "typescript": "4.6.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inokawa/babel-plugin-prebuild.git"
+  },
+  "keywords": [
+    "babel",
+    "babel-plugin"
+  ],
+  "author": "inokawa <stratoooo-taster@yahoo.co.jp> (https://github.com/inokawa/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/inokawa/babel-plugin-prebuild/issues"
+  },
+  "homepage": "https://github.com/inokawa/babel-plugin-prebuild#readme"
+}
