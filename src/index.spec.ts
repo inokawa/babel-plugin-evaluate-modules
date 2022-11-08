@@ -185,12 +185,12 @@ it("variables", () => {
       const val = "blue";
       const obj = {
         color: "#123456",
-        red: "red"
+        nested: { red: "red" }
       };
       
       const a = rgba(val, 0.5);
       const b = rgba(obj.color, 0.5);
-      const c = rgba(obj.red, 0.5);
+      const c = rgba(obj.nested.red, 0.5);
     `,
       { plugins: [[plugin, { name: "polished" }]] }
     )?.code
@@ -199,11 +199,13 @@ it("variables", () => {
 const val = "blue";
 const obj = {
   color: "#123456",
-  red: "red"
+  nested: {
+    red: "red"
+  }
 };
 const a = "rgba(0,0,255,0.5)";
 const b = rgba(obj.color, 0.5);
-const c = rgba(obj.red, 0.5);"
+const c = rgba(obj.nested.red, 0.5);"
 `);
 });
 
