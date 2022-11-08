@@ -16,6 +16,16 @@ const evaluateFunction = (
   for (const a of args) {
     if (a.isLiteral()) {
       serializedArgs.push("value" in a.node ? a.node.value : null);
+    } else if (a.isIdentifier()) {
+      const valuePath = a.scope.bindings[a.node.name]?.path as  any;
+      if (!valuePath) return null;
+      if (
+        valuePath.node.type !== "VariableDeclarator" ||
+        !valuePath.node.init
+      ) {
+        return null;
+      }
+      serializedArgs.push(valuePath.node.init.value);
     } else {
       return null;
     }

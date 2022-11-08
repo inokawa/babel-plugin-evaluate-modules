@@ -158,9 +158,14 @@ it("non-literal arg", () => {
       { plugins: [[plugin, { name: "polished" }]] }
     )?.code
   ).toMatchInlineSnapshot(`
-"import * as polished from 'polished';
-let parent = 'parent';
-let a = polished.clearFix(parent);
+"let parent = 'parent';
+let a = {
+  "parent::after": {
+    clear: "both",
+    content: "\\"\\"",
+    display: "table"
+  }
+};
 let b = {
   "parent::after": {
     clear: "both",
@@ -168,6 +173,37 @@ let b = {
     display: "table"
   }
 };"
+`);
+});
+
+it("variables", () => {
+  expect(
+    transform(
+      `
+      import {rgba} from 'polished';
+
+      const val = "blue";
+      const obj = {
+        color: "#123456",
+        red: "red"
+      };
+      
+      const a = rgba(val, 0.5);
+      const b = rgba(obj.color, 0.5);
+      const c = rgba(obj.red, 0.5);
+    `,
+      { plugins: [[plugin, { name: "polished" }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`
+"import { rgba } from 'polished';
+const val = "blue";
+const obj = {
+  color: "#123456",
+  red: "red"
+};
+const a = "rgba(0,0,255,0.5)";
+const b = rgba(obj.color, 0.5);
+const c = rgba(obj.red, 0.5);"
 `);
 });
 
