@@ -46,6 +46,18 @@ const barVal = "barbaz";"
 `);
 });
 
+it("commonjs with other module", () => {
+  expect(
+    transform(
+      `
+      import res from '../fixtures/cjs-with-other-module';
+      const val = res;
+        `,
+      { plugins: [[plugin, { name: /\/fixtures\// }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`"const val = 3;"`);
+});
+
 it("esmodule default constant", () => {
   expect(
     transform(
@@ -88,6 +100,18 @@ it("esmodule namespace constant", () => {
 "const fooVal = 14;
 const barVal = "barbaz";"
 `);
+});
+
+it("read file", () => {
+  expect(
+    transform(
+      `
+      import mod from '../fixtures/cjs-read-file';
+      const value = mod.val
+        `,
+      { plugins: [[plugin, { name: /\/fixtures\// }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`"const value = "# Hello\\n\\nworld\\n";"`);
 });
 
 it("namespace", () => {
