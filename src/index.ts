@@ -9,6 +9,96 @@ interface VisitorState extends PluginPass {
   opts: { name?: ModuleName | ModuleName[] };
 }
 
+const getModulePath = (p: NodePath<types.MemberExpression>) => {
+  const property = p.get("property");
+  if ("name" in property.node) {
+    return property.node;
+  } else {
+    throw property.buildCodeFrameError("Not implemented yet");
+  }
+};
+
+const getBindingFromIdentifier = (a: NodePath<types.Identifier>) => {
+  const binding = a.scope.getBinding(a.node.name);
+  if (!binding) return null;
+  const path = binding.path;
+  if (!path || !path.isVariableDeclarator() || !path.node.init) {
+    return null;
+  }
+  return path.get("init");
+};
+
+const resolveLiteral = (p: NodePath<types.Literal>) => {
+  return "value" in p.node ? p.node.value : null;
+};
+
+const getName = (
+  p:
+    | NodePath<types.Identifier>
+    | NodePath<types.StringLiteral>
+    | NodePath<types.NumericLiteral>
+): string | number => ("name" in p.node ? p.node.name : p.node.value);
+
+const resolveObjectExpression = (
+  obj: NodePath<types.ObjectExpression>,
+  props: (
+    | NodePath<types.Identifier>
+    | NodePath<types.StringLiteral>
+    | NodePath<types.NumericLiteral>
+  )[]
+): NodePath<types.Literal> | null => {
+  const targetP = props.pop()!;
+  const propertyName = getName(targetP);
+  for (const objectP of obj.get("properties")) {
+    if (objectP.isObjectProperty()) {
+      const rpKey = objectP.get("key");
+      if (
+        (rpKey.isIdentifier() ||
+          rpKey.isStringLiteral() ||
+          rpKey.isNumericLiteral()) &&
+        getName(rpKey) === propertyName
+      ) {
+        const v = objectP.get("value");
+        if (v.isLiteral()) {
+          return v;
+        } else if (v.isObjectExpression()) {
+          return resolveObjectExpression(v, props);
+        } else {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+};
+
+const resolveObjectMember = (
+  path: NodePath<types.MemberExpression>,
+  props: (
+    | NodePath<types.Identifier>
+    | NodePath<types.StringLiteral>
+    | NodePath<types.NumericLiteral>
+  )[]
+): NodePath<types.Literal> | null => {
+  const o = path.get("object");
+  const p = path.get("property");
+  if (!p.isIdentifier() && !p.isStringLiteral() && !p.isNumericLiteral()) {
+    return null;
+  }
+  const nextProps = [...props, p];
+  if (o.isMemberExpression()) {
+    return resolveObjectMember(o, nextProps);
+  } else if (o.isIdentifier()) {
+    const objectRoot = getBindingFromIdentifier(o);
+    if (!objectRoot) return null;
+    if (objectRoot.isObjectExpression()) {
+      return resolveObjectExpression(objectRoot, nextProps);
+    }
+  }
+
+  return null;
+};
+
 const evaluateFunction = (
   t: typeof types,
   callExp: NodePath<types.CallExpression>,
@@ -18,33 +108,40 @@ const evaluateFunction = (
   const serializedArgs: (string | number | boolean | null)[] = [];
   for (const a of args) {
     if (a.isLiteral()) {
-      serializedArgs.push("value" in a.node ? a.node.value : null);
+      serializedArgs.push(resolveLiteral(a));
     } else if (a.isIdentifier()) {
-      const path = a.scope.bindings[a.node.name]?.path;
-      if (!path || !path.isVariableDeclarator() || !path.node.init) {
-        return null;
+      const v = getBindingFromIdentifier(a);
+      if (!v) return null;
+      if (v.isLiteral()) {
+        serializedArgs.push(resolveLiteral(v));
+        continue;
       }
-      if ("value" in path.node.init) {
-        serializedArgs.push(path.node.init.value);
-      } else {
-        return null;
+      return null;
+    } else if (a.isMemberExpression()) {
+      const v = resolveObjectMember(a, []);
+      if (!v) return null;
+      if (v.isLiteral()) {
+        serializedArgs.push(resolveLiteral(v));
+        continue;
       }
+      return null;
     } else {
       return null;
     }
   }
 
   const result = fn(...serializedArgs);
-  return t.valueToNode(result);
-};
-
-const getModulePath = (p: NodePath<types.MemberExpression>) => {
-  const property = p.get("property");
-  if ("name" in property.node) {
-    return property.node;
-  } else {
-    throw property.buildCodeFrameError("Not implemented yet");
+  const parent = callExp.parentPath;
+  if (parent.isMemberExpression()) {
+    const property = parent.get("property");
+    const object = parent.get("object");
+    if (property.isIdentifier() && object.isCallExpression()) {
+      return t.valueToNode(
+        evaluateFunction(t, object, result[property.node.name])
+      );
+    }
   }
+  return t.valueToNode(result);
 };
 
 export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {

@@ -324,7 +324,7 @@ it("non-literal arg", () => {
   `);
 });
 
-it("variables", () => {
+it("nested object (identifier)", () => {
   expect(
     transform(
       `
@@ -343,18 +343,49 @@ it("variables", () => {
       { plugins: [[plugin, { name: "polished" }]] }
     )?.code
   ).toMatchInlineSnapshot(`
-  "import { rgba } from 'polished';
-  const val = "blue";
-  const obj = {
-    color: "#123456",
-    nested: {
-      red: "red"
-    }
-  };
-  const a = "rgba(0,0,255,0.5)";
-  const b = rgba(obj.color, 0.5);
-  const c = rgba(obj.nested.red, 0.5);"
-  `);
+"const val = "blue";
+const obj = {
+  color: "#123456",
+  nested: {
+    red: "red"
+  }
+};
+const a = "rgba(0,0,255,0.5)";
+const b = "rgba(18,52,86,0.5)";
+const c = "rgba(255,0,0,0.5)";"
+`);
+});
+
+it("nested object (literal)", () => {
+  expect(
+    transform(
+      `
+        import {rgba} from 'polished';
+  
+        const val = "blue";
+        const obj = {
+          color: "#123456",
+          3: { red: "red" }
+        };
+        
+        const a = rgba(val, 0.5);
+        const b = rgba(obj['color'], 0.5);
+        const c = rgba(obj[3].red, 0.5);
+      `,
+      { plugins: [[plugin, { name: "polished" }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`
+"const val = "blue";
+const obj = {
+  color: "#123456",
+  3: {
+    red: "red"
+  }
+};
+const a = "rgba(0,0,255,0.5)";
+const b = "rgba(18,52,86,0.5)";
+const c = "rgba(255,0,0,0.5)";"
+`);
 });
 
 it("null args", () => {
