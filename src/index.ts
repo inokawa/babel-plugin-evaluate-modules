@@ -3,12 +3,14 @@ import { sandboxedRequire } from "./vm";
 
 type Types = typeof types;
 
+export type ModuleName = string | RegExp;
+
 interface VisitorState extends PluginPass {
-  opts: { name?: string | RegExp };
+  opts: { name?: ModuleName | ModuleName[] };
 }
 
 const evaluateFunction = (
-  t: Types,
+  t: typeof types,
   callExp: NodePath<types.CallExpression>,
   fn: (...args: any[]) => any
 ): types.Expression | null => {
@@ -53,13 +55,27 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
         if (!state.opts.name) {
           throw path.buildCodeFrameError("name option is not given");
         }
-        const { name } = state.opts;
+        let name = state.opts.name;
         const sourceValue = path.get("source").node.value;
 
-        if (name instanceof RegExp) {
-          if (!name.test(sourceValue)) return;
-        } else {
-          if (sourceValue.indexOf(name) !== 0) return;
+        if (!Array.isArray(name)) {
+          name = [name];
+        }
+        if (
+          !name.some((n) => {
+            if (n instanceof RegExp) {
+              if (n.test(sourceValue)) {
+                return true;
+              }
+            } else {
+              if (sourceValue.indexOf(n) === 0) {
+                return true;
+              }
+            }
+            return false;
+          })
+        ) {
+          return;
         }
 
         let importedModule: any;
