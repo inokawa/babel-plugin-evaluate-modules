@@ -7,12 +7,19 @@ export default {
     {
       file: pkg.main,
       format: "cjs",
+      sourcemap: true,
     },
     {
       file: pkg.module,
       format: "es",
+      sourcemap: true,
     },
   ],
+  external: (id) =>
+    [
+      ...Object.keys(pkg.dependencies),
+      ...Object.keys(pkg.devDependencies),
+    ].some((d) => id.startsWith(d)),
   plugins: [
     typescript({
       tsconfig: "./tsconfig.json",
