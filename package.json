@@ -15,8 +15,7 @@
     "prepublishOnly": "rimraf lib && npm run build"
   },
   "dependencies": {
-    "@babel/plugin-transform-modules-commonjs": "^7.19.6",
-    "require-from-string": "^2.0.2"
+    "@babel/plugin-transform-modules-commonjs": "^7.19.6"
   },
   "devDependencies": {
     "@babel/core": "7.20.2",

@@ -46,11 +46,23 @@ const barVal = "barbaz";"
 `);
 });
 
-it("commonjs with other module", () => {
+it("commonjs with other commonjs module", () => {
   expect(
     transform(
       `
-      import res from '../fixtures/cjs-with-other-module';
+      import res from '../fixtures/cjs-import-cjs';
+      const val = res;
+        `,
+      { plugins: [[plugin, { name: /\/fixtures\// }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`"const val = 3;"`);
+});
+
+it("commonjs with other esmodule", () => {
+  expect(
+    transform(
+      `
+      import res from '../fixtures/cjs-import-esm';
       const val = res;
         `,
       { plugins: [[plugin, { name: /\/fixtures\// }]] }
@@ -100,6 +112,30 @@ it("esmodule namespace constant", () => {
 "const fooVal = 14;
 const barVal = "barbaz";"
 `);
+});
+
+it("esmodule with other esmodule", () => {
+  expect(
+    transform(
+      `
+      import res from '../fixtures/esm-import-esm';
+      const val = res;
+        `,
+      { plugins: [[plugin, { name: /\/fixtures\// }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`"const val = 3;"`);
+});
+
+it("esmodule with other commonjs module", () => {
+  expect(
+    transform(
+      `
+      import res from '../fixtures/esm-import-cjs';
+      const val = res;
+        `,
+      { plugins: [[plugin, { name: /\/fixtures\// }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`"const val = 3;"`);
 });
 
 it("read file", () => {

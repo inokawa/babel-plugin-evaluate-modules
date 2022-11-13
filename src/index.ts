@@ -2,9 +2,7 @@ import type { PluginObj, PluginPass, NodePath } from "@babel/core";
 import type BabelCore from "@babel/core";
 import { transformSync } from "@babel/core";
 import { readFileSync } from "fs";
-import { join } from "path";
-// @ts-expect-error ignore type definition
-import requireFromString from "require-from-string";
+import { sandboxedRequire } from "./vm";
 
 type Types = typeof BabelCore.types;
 
@@ -12,11 +10,20 @@ interface VisitorState extends PluginPass {
   opts: { name?: string | RegExp };
 }
 
+const requireESM = (path: string): string => {
+  return (
+    transformSync(readFileSync(require.resolve(path), "utf8"), {
+      plugins: [["@babel/plugin-transform-modules-commonjs"]],
+    })?.code ?? ""
+  );
+};
+
 const evaluateFunction = (
   t: Types,
-  args: NodePath<BabelCore.types.Node>[],
+  callExp: NodePath<BabelCore.types.CallExpression>,
   fn: (...args: any[]) => any
 ): BabelCore.types.Expression | null => {
+  const args = callExp.get("arguments");
   const serializedArgs: (string | number | boolean | null)[] = [];
   for (const a of args) {
     if (a.isLiteral()) {
@@ -72,13 +79,7 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
         } catch (e) {
           // maybe esm only module
           // read as cjs
-          const moduleCode = transformSync(
-            readFileSync(require.resolve(join(__dirname, sourceValue)), "utf8"),
-            {
-              plugins: [["@babel/plugin-transform-modules-commonjs"]],
-            }
-          );
-          importedModule = requireFromString(moduleCode!.code);
+          importedModule = sandboxedRequire(sourceValue, requireESM);
         }
 
         if (!importedModule) {
@@ -159,8 +160,7 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
               }
 
               if (parentExp.isCallExpression()) {
-                const args = parentExp.get("arguments");
-                const resultAst = evaluateFunction(t, args, targetModule);
+                const resultAst = evaluateFunction(t, parentExp, targetModule);
                 if (!resultAst) return true;
                 parentExp.replaceWith(resultAst);
               } else if (parentExp.isMemberExpression()) {
