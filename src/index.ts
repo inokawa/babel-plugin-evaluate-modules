@@ -4,7 +4,7 @@ import type BabelCore from "@babel/core";
 type Types = typeof BabelCore.types;
 
 interface VisitorState extends PluginPass {
-  opts: { name?: string };
+  opts: { name?: string | RegExp };
 }
 
 const evaluateFunction = (
@@ -35,6 +35,15 @@ const evaluateFunction = (
   return t.valueToNode(result);
 };
 
+const getModulePath = (p: NodePath<BabelCore.types.MemberExpression>) => {
+  const property = p.get("property");
+  if ("name" in property.node) {
+    return property.node;
+  } else {
+    throw property.buildCodeFrameError("Not implemented yet");
+  }
+};
+
 export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
   return {
     name: "babel-plugin-prebuild",
@@ -46,7 +55,11 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
         const name = state.opts.name;
         const sourceValue = path.get("source").node.value;
 
-        if (sourceValue.indexOf(name) !== 0) return;
+        if (name instanceof RegExp) {
+          if (!name.test(sourceValue)) return;
+        } else {
+          if (sourceValue.indexOf(name) !== 0) return;
+        }
 
         const importedModule = require(sourceValue);
 
@@ -57,66 +70,74 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
 
             if (specifier.isImportSpecifier()) {
               const imported = specifier.get("imported");
-              if (imported.isIdentifier()) {
-                const importedName = imported.node.name;
-                const value = importedValue[importedName];
-                if (!value) {
-                  throw imported.buildCodeFrameError(
-                    `Method does not exist: ${importedName}`
-                  );
-                }
-                importedValue = value;
-              } else {
-                throw imported.buildCodeFrameError("Not implemented yet");
+              if (!imported.isIdentifier()) {
+                throw imported.buildCodeFrameError("not implemented yet");
               }
+              const importedName = imported.node.name;
+              const value = importedValue[importedName];
+              if (!value) {
+                throw imported.buildCodeFrameError(
+                  `${importedName} does not exported from ${sourceValue}`
+                );
+              }
+              importedValue = value;
             }
 
             const local = specifier.get("local");
             const binding = local.scope.getBinding(local.node.name);
             if (!binding) {
-              throw local.buildCodeFrameError("Module not found");
+              throw local.buildCodeFrameError(`${sourceValue} is not used`);
             }
 
             const invalidatedRefs = binding.referencePaths.filter((ref) => {
-              let matchedMethod = importedValue;
-
-              const callExpression: NodePath<BabelCore.types.CallExpression> | null =
-                ref.findParent((parent) => {
-                  if (parent.isCallExpression()) {
-                    return true;
-                  } else if (parent.isMemberExpression()) {
-                    const property = parent.get("property");
-                    if ("name" in property.node) {
-                      const methodName = property.node.name;
-                      const method = matchedMethod[methodName];
-
-                      if (!method) {
-                        throw property.buildCodeFrameError(
-                          `Method does not exist: ${methodName}`
-                        );
-                      }
-
-                      matchedMethod = method;
-                      return false;
-                    } else {
-                      throw property.buildCodeFrameError("Not implemented yet");
-                    }
-                  } else {
+              let targetModule = importedValue;
+              const parentExp:
+                | NodePath<BabelCore.types.CallExpression>
+                | NodePath<BabelCore.types.MemberExpression>
+                | NodePath<BabelCore.types.VariableDeclarator>
+                | null = ref.findParent((parent) => {
+                if (parent.isCallExpression()) {
+                  return true;
+                } else if (parent.isMemberExpression()) {
+                  const methodName = getModulePath(parent).name;
+                  const method = targetModule[methodName];
+                  if (!method) {
                     throw parent.buildCodeFrameError(
-                      `Unexpected node type: ${parent.type}`
+                      `Method does not exist: ${methodName}`
                     );
                   }
-                }) as any; // FIXME
 
-              if (!callExpression) {
-                throw ref.buildCodeFrameError("Module is not called");
+                  targetModule = method;
+
+                  if (!parent.parentPath.isCallExpression()) {
+                    return true;
+                  }
+
+                  return false;
+                } else if (parent.isVariableDeclarator()) {
+                  return true;
+                } else {
+                  throw parent.buildCodeFrameError(
+                    `Unexpected node type: ${parent.type}`
+                  );
+                }
+              }) as any; // FIXME
+
+              if (!parentExp) {
+                throw ref.buildCodeFrameError(`${sourceValue} is not used`);
               }
 
-              const args = callExpression.get("arguments");
-              const resultAst = evaluateFunction(t, args, matchedMethod);
-              if (!resultAst) return true;
+              if (parentExp.isCallExpression()) {
+                const args = parentExp.get("arguments");
+                const resultAst = evaluateFunction(t, args, targetModule);
+                if (!resultAst) return true;
+                parentExp.replaceWith(resultAst);
+              } else if (parentExp.isMemberExpression()) {
+                parentExp.replaceWith(t.valueToNode(targetModule));
+              } else {
+                ref.replaceWith(t.valueToNode(targetModule));
+              }
 
-              callExpression.replaceWith(resultAst);
               return false;
             });
 
