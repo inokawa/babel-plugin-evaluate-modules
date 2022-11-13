@@ -14,6 +14,10 @@
     "tsc": "tsc -p . --noEmit",
     "prepublishOnly": "rimraf lib && npm run build"
   },
+  "dependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.19.6",
+    "require-from-string": "^2.0.2"
+  },
   "devDependencies": {
     "@babel/core": "7.20.2",
     "@rollup/plugin-typescript": "9.0.2",

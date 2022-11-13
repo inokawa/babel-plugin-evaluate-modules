@@ -1,10 +1,15 @@
 import type { PluginObj, PluginPass, NodePath } from "@babel/core";
 import type BabelCore from "@babel/core";
+import { transformSync } from "@babel/core";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
+// @ts-expect-error ignore type definition
+import requireFromString from "require-from-string";
 
 type Types = typeof BabelCore.types;
 
 interface VisitorState extends PluginPass {
-  opts: { name?: string | RegExp };
+  opts: { name?: string | RegExp; exts?: string[] };
 }
 
 const evaluateFunction = (
@@ -52,7 +57,8 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
         if (!state.opts.name) {
           throw path.buildCodeFrameError("name is not given from options");
         }
-        const name = state.opts.name;
+        const { name, exts = [".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs"] } =
+          state.opts;
         const sourceValue = path.get("source").node.value;
 
         if (name instanceof RegExp) {
@@ -61,7 +67,31 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
           if (sourceValue.indexOf(name) !== 0) return;
         }
 
-        const importedModule = require(sourceValue);
+        let importedModule: any;
+        try {
+          importedModule = require(sourceValue);
+        } catch (e) {
+          // maybe esm only module
+          // estimate extension
+          for (const ext of exts) {
+            const modulePath = join(__dirname, sourceValue + ext);
+            if (existsSync(modulePath)) {
+              // read as cjs
+              const moduleCode = transformSync(
+                readFileSync(modulePath, "utf8"),
+                {
+                  plugins: [["@babel/plugin-transform-modules-commonjs"]],
+                }
+              );
+              importedModule = requireFromString(moduleCode!.code);
+              break;
+            }
+          }
+        }
+
+        if (!importedModule) {
+          throw path.buildCodeFrameError(`can't resolve ${sourceValue}`);
+        }
 
         const invalidatedSpecifiers = path
           .get("specifiers")
@@ -91,6 +121,15 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
 
             const invalidatedRefs = binding.referencePaths.filter((ref) => {
               let targetModule = importedValue;
+
+              // for interop of esm and cjs
+              if (
+                typeof targetModule === "object" &&
+                "default" in targetModule
+              ) {
+                targetModule = targetModule.default;
+              }
+
               const parentExp:
                 | NodePath<BabelCore.types.CallExpression>
                 | NodePath<BabelCore.types.MemberExpression>

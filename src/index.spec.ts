@@ -6,7 +6,7 @@ it("commonjs default constant", () => {
   expect(
     transform(
       `
-      import val from '../fixtures/commonjs-default-constant';
+      import val from '../fixtures/cjs-default-constant';
       const value = val
         `,
       { plugins: [[plugin, { name: /\/fixtures\// }]] }
@@ -18,7 +18,7 @@ it("commonjs named constant", () => {
   expect(
     transform(
       `
-      import { foo, bar } from '../fixtures/commonjs-named-constant';
+      import { foo, bar } from '../fixtures/cjs-named-constant';
       const fooVal = foo;
       const barVal = bar;
         `,
@@ -34,7 +34,51 @@ it("commonjs namespace constant", () => {
   expect(
     transform(
       `
-      import * as val from '../fixtures/commonjs-named-constant';
+      import * as val from '../fixtures/cjs-named-constant';
+      const fooVal = val.foo;
+      const barVal = val.bar;
+        `,
+      { plugins: [[plugin, { name: /\/fixtures\// }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`
+"const fooVal = 14;
+const barVal = "barbaz";"
+`);
+});
+
+it("esmodule default constant", () => {
+  expect(
+    transform(
+      `
+      import val from '../fixtures/esm-default-constant';
+      const value = val
+        `,
+      { plugins: [[plugin, { name: /\/fixtures\// }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`"const value = 1;"`);
+});
+
+it("esmodule named constant", () => {
+  expect(
+    transform(
+      `
+      import { foo, bar } from '../fixtures/esm-named-constant';
+      const fooVal = foo;
+      const barVal = bar;
+        `,
+      { plugins: [[plugin, { name: /\/fixtures\// }]] }
+    )?.code
+  ).toMatchInlineSnapshot(`
+"const fooVal = 14;
+const barVal = "barbaz";"
+`);
+});
+
+it("esmodule namespace constant", () => {
+  expect(
+    transform(
+      `
+      import * as val from '../fixtures/esm-named-constant';
       const fooVal = val.foo;
       const barVal = val.bar;
         `,
