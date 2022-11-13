@@ -1,28 +1,17 @@
-import type { PluginObj, PluginPass, NodePath } from "@babel/core";
-import type BabelCore from "@babel/core";
-import { transformSync } from "@babel/core";
-import { readFileSync } from "fs";
+import type { PluginObj, PluginPass, NodePath, types } from "@babel/core";
 import { sandboxedRequire } from "./vm";
 
-type Types = typeof BabelCore.types;
+type Types = typeof types;
 
 interface VisitorState extends PluginPass {
   opts: { name?: string | RegExp };
 }
 
-const requireESM = (path: string): string => {
-  return (
-    transformSync(readFileSync(require.resolve(path), "utf8"), {
-      plugins: [["@babel/plugin-transform-modules-commonjs"]],
-    })?.code ?? ""
-  );
-};
-
 const evaluateFunction = (
   t: Types,
-  callExp: NodePath<BabelCore.types.CallExpression>,
+  callExp: NodePath<types.CallExpression>,
   fn: (...args: any[]) => any
-): BabelCore.types.Expression | null => {
+): types.Expression | null => {
   const args = callExp.get("arguments");
   const serializedArgs: (string | number | boolean | null)[] = [];
   for (const a of args) {
@@ -47,7 +36,7 @@ const evaluateFunction = (
   return t.valueToNode(result);
 };
 
-const getModulePath = (p: NodePath<BabelCore.types.MemberExpression>) => {
+const getModulePath = (p: NodePath<types.MemberExpression>) => {
   const property = p.get("property");
   if ("name" in property.node) {
     return property.node;
@@ -62,7 +51,7 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
     visitor: {
       ImportDeclaration(path, state) {
         if (!state.opts.name) {
-          throw path.buildCodeFrameError("name is not given from options");
+          throw path.buildCodeFrameError("name option is not given");
         }
         const { name } = state.opts;
         const sourceValue = path.get("source").node.value;
@@ -79,7 +68,7 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
         } catch (e) {
           // maybe esm only module
           // read as cjs
-          importedModule = sandboxedRequire(sourceValue, requireESM);
+          importedModule = sandboxedRequire(sourceValue);
         }
 
         if (!importedModule) {
@@ -124,9 +113,9 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
               }
 
               const parentExp:
-                | NodePath<BabelCore.types.CallExpression>
-                | NodePath<BabelCore.types.MemberExpression>
-                | NodePath<BabelCore.types.VariableDeclarator>
+                | NodePath<types.CallExpression>
+                | NodePath<types.MemberExpression>
+                | NodePath<types.VariableDeclarator>
                 | null = ref.findParent((parent) => {
                 if (parent.isCallExpression()) {
                   return true;

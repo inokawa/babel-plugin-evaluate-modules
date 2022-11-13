@@ -1,14 +1,21 @@
 import * as vm from "vm";
 import { dirname, join } from "path";
+import { readFileSync } from "fs";
+import { transformSync } from "@babel/core";
 
-export const sandboxedRequire = (
-  entryFilename: string,
-  require: (file: string) => string
-) => {
-  const code = require(join(__dirname, entryFilename));
+const requireESM = (path: string): string => {
+  return (
+    transformSync(readFileSync(require.resolve(path), "utf8"), {
+      plugins: [["@babel/plugin-transform-modules-commonjs"]],
+    })?.code ?? ""
+  );
+};
+
+export const sandboxedRequire = (entryFilename: string): any => {
+  const code = requireESM(join(__dirname, entryFilename));
 
   const vmRequire = (filename: string) => {
-    const code = require(join(dirname(entryFilename), filename));
+    const code = requireESM(join(dirname(entryFilename), filename));
     const module = { exports: {} };
     const context = vm.createContext({
       module: module,
