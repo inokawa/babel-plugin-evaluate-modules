@@ -1,7 +1,7 @@
 import type { PluginObj, PluginPass, NodePath } from "@babel/core";
 import type BabelCore from "@babel/core";
 import { transformSync } from "@babel/core";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync } from "fs";
 import { join } from "path";
 // @ts-expect-error ignore type definition
 import requireFromString from "require-from-string";
@@ -9,7 +9,7 @@ import requireFromString from "require-from-string";
 type Types = typeof BabelCore.types;
 
 interface VisitorState extends PluginPass {
-  opts: { name?: string | RegExp; exts?: string[] };
+  opts: { name?: string | RegExp };
 }
 
 const evaluateFunction = (
@@ -57,8 +57,7 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
         if (!state.opts.name) {
           throw path.buildCodeFrameError("name is not given from options");
         }
-        const { name, exts = [".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs"] } =
-          state.opts;
+        const { name } = state.opts;
         const sourceValue = path.get("source").node.value;
 
         if (name instanceof RegExp) {
@@ -72,21 +71,14 @@ export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
           importedModule = require(sourceValue);
         } catch (e) {
           // maybe esm only module
-          // estimate extension
-          for (const ext of exts) {
-            const modulePath = join(__dirname, sourceValue + ext);
-            if (existsSync(modulePath)) {
-              // read as cjs
-              const moduleCode = transformSync(
-                readFileSync(modulePath, "utf8"),
-                {
-                  plugins: [["@babel/plugin-transform-modules-commonjs"]],
-                }
-              );
-              importedModule = requireFromString(moduleCode!.code);
-              break;
+          // read as cjs
+          const moduleCode = transformSync(
+            readFileSync(require.resolve(join(__dirname, sourceValue)), "utf8"),
+            {
+              plugins: [["@babel/plugin-transform-modules-commonjs"]],
             }
-          }
+          );
+          importedModule = requireFromString(moduleCode!.code);
         }
 
         if (!importedModule) {
