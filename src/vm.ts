@@ -3,6 +3,10 @@ import { dirname, join } from "path";
 import { readFileSync } from "fs";
 import { transformSync } from "@babel/core";
 
+const isRelativeImport = (path: string): boolean => {
+  return /^[./]/.test(path);
+};
+
 const requireESM = (path: string): string => {
   return (
     transformSync(readFileSync(require.resolve(path), "utf8"), {
@@ -12,10 +16,18 @@ const requireESM = (path: string): string => {
 };
 
 export const sandboxedRequire = (entryFilename: string): any => {
-  const code = requireESM(join(__dirname, entryFilename));
+  const code = requireESM(
+    isRelativeImport(entryFilename)
+      ? join(__dirname, entryFilename)
+      : entryFilename
+  );
 
   const vmRequire = (filename: string) => {
-    const code = requireESM(join(dirname(entryFilename), filename));
+    const code = requireESM(
+      isRelativeImport(filename)
+        ? join(dirname(entryFilename), filename)
+        : filename
+    );
     const module = { exports: {} };
     const context = vm.createContext({
       module: module,
