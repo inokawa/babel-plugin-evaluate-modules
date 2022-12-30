@@ -1,7 +1,7 @@
 {
   "name": "babel-plugin-evaluate",
   "version": "0.0.0",
-  "description": "",
+  "description": "A babel plugin to evaluate code at build-time.",
   "main": "lib/index.js",
   "module": "lib/index.mjs",
   "types": "lib/index.d.ts",
@@ -34,7 +34,10 @@
   },
   "keywords": [
     "babel",
-    "babel-plugin"
+    "babel-plugin",
+    "eval",
+    "precompile",
+    "code generation"
   ],
   "author": "inokawa <stratoooo-taster@yahoo.co.jp> (https://github.com/inokawa/)",
   "license": "MIT",
