@@ -1,21 +1,23 @@
-# babel-plugin-evaluate
+# babel-plugin-evaluate-modules
 
-![npm](https://img.shields.io/npm/v/babel-plugin-evaluate) ![npm](https://img.shields.io/npm/dw/babel-plugin-evaluate) ![check](https://github.com/inokawa/babel-plugin-evaluate/workflows/check/badge.svg)
+![npm](https://img.shields.io/npm/v/babel-plugin-evaluate-modules) ![check](https://github.com/inokawa/babel-plugin-evaluate-modules/workflows/check/badge.svg)
 
-A babel plugin to evaluate code at build-time.
+A babel plugin to evaluate modules at build-time.
 
 ## Why?
 
-I wanted to evaluate some functions and calculations in build process, to remove the modules themselves from the bundle to make the bundle size smaller.
+I wanted to evaluate some functions and calculations in build process that didn't need to run at runtime, to remove the modules themselves from the bundle to reduce its size.
 
-[babel-plugin-preval](https://github.com/kentcdodds/babel-plugin-preval) and [babel-plugin-codegen](https://github.com/kentcdodds/babel-plugin-codegen) only supports CommonJS not ES Modules, and handles limited syntaxes.
+- [babel-plugin-preval](https://github.com/kentcdodds/babel-plugin-preval) and [babel-plugin-codegen](https://github.com/kentcdodds/babel-plugin-codegen) only supports CommonJS not ES Modules, and the evaluation does not run in a sandbox.
 
-[babel-plugin-polished](https://github.com/styled-components/babel-plugin-polished) only supports [polishd](https://github.com/styled-components/polished) and handles limited syntaxes.
+- [babel-plugin-polished](https://github.com/styled-components/babel-plugin-polished) only supports [polished](https://github.com/styled-components/polished) and only handles simple syntaxes.
+
+- [babel-plugin-inline-constants](https://github.com/wooorm/babel-plugin-inline-constants) only handles constants inlining.
 
 ## Setup
 
 ```sh
-npm install babel-plugin-evaluate
+npm install babel-plugin-evaluate-modules
 ```
 
 ## Usage
@@ -25,7 +27,7 @@ npm install babel-plugin-evaluate
 ```ts
 // babel.config.js
 module.exports = {
-  plugins: [["babel-plugin-evaluate", { name: "polished" }]],
+  plugins: [["babel-plugin-evaluate-modules", { name: "polished" }]],
 };
 
 // App.js
@@ -47,7 +49,7 @@ const c = rgba(obj.red, 0.5); // const c = "rgba(255,0,0,0.5)";
 ```ts
 // babel.config.js
 module.exports = {
-  plugins: [["babel-plugin-evaluate", { name: /\/constants\// }]],
+  plugins: [["babel-plugin-evaluate-modules", { name: /\/constants\// }]],
 };
 
 // constants/foo.js
@@ -63,7 +65,7 @@ const barVal = bar; // const barVal = "barbaz";
 ## Contribute
 
 All contributions are welcome.
-If you find a problem, feel free to create an [issue](https://github.com/inokawa/babel-plugin-evaluate/issues) or a [PR](https://github.com/inokawa/babel-plugin-evaluate/pulls).
+If you find a problem, feel free to create an [issue](https://github.com/inokawa/babel-plugin-evaluate-modules/issues) or a [PR](https://github.com/inokawa/babel-plugin-evaluate-modules/pulls).
 
 ### Making a Pull Request
 

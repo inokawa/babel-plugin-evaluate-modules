@@ -146,7 +146,7 @@ const evaluateFunction = (
 
 export default ({ types: t }: { types: Types }): PluginObj<VisitorState> => {
   return {
-    name: "babel-plugin-evaluate",
+    name: "babel-plugin-evaluate-modules",
     visitor: {
       ImportDeclaration(path, state) {
         if (!state.opts.name) {
