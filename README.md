@@ -1,5 +1,7 @@
 # babel-plugin-evaluate
 
+![npm](https://img.shields.io/npm/v/babel-plugin-evaluate) ![npm](https://img.shields.io/npm/dw/babel-plugin-evaluate) ![check](https://github.com/inokawa/babel-plugin-evaluate/workflows/check/badge.svg)
+
 A babel plugin to evaluate code at build-time.
 
 ## Why?
